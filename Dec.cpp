@@ -16,14 +16,14 @@ struct FileInfo {
 
 std::ostream& operator<<(std::ostream& stream, const FileInfo& fileInfo);
 vector<string> extractData(const string& data, const string& regex);
-string getFileName(string s);
-string getFileDate(string s);
-int getFileSum(string s);
+string getFileName(const string& s);
+string getFileDate(const string& s);
+int getFileSum(const string& s);
 
 int main() {
     ifstream ist("file.txt");
-    if (!ist.is_open()) {
-        cerr << "Error opening file" << endl;
+    if (!ist) {
+        cerr << "Error: Unable to open file." << endl;
         return 1;
     }
 
@@ -69,39 +69,74 @@ int main() {
     return 0;
 }
 
-string getFileName(string s) {
-    auto name = extractData(s, R"("[a-zA-Z0-9._-]+")");
-    if (name.empty()) {
-        throw runtime_error("File name not found in the input line.");
+    // Вывод исходного списка 
+    cout << "Original list:\n";
+    for (const auto& file : files) {
+        cout << file << "\n";
     }
-    return name.at(0);
+
+    // Сортировка по дате (альтернативная реализация через компаратор) 
+    auto dateComparator = [](const FileInfo& a, const FileInfo& b) {
+        return a.date < b.date;
+        };
+    sort(files.begin(), files.end(), dateComparator);
+
+    cout << "\nSorted by date:\n";
+    for (const auto& file : files) {
+        cout << file << "\n";
+    }
+
+    // Суммирование доходов (альтернативная реализация через явный цикл) 
+    map<string, int> incomeSummary;
+    for (const auto& file : files) {
+        if (incomeSummary.find(file.name) == incomeSummary.end()) {
+            incomeSummary[file.name] = 0;
+        }
+        incomeSummary[file.name] += file.sum;
+    }
+
+    // Нахождение топ-3 доходов (без промежуточного вектора) 
+    multimap<int, string, greater<int>> sortedIncome;
+    for (const auto& entry : incomeSummary) {
+        sortedIncome.insert({ entry.second, entry.first });
+    }
+
+    cout << "\nTop-3 incomes:\n";
+    size_t count = 0;
+    for (const auto& entry : sortedIncome) {
+        if (count++ == 3) break;
+        cout << entry.second << ": " << entry.first << "\n";
+    }
+
+    return 0;
 }
 
-string getFileDate(string s) {
-    auto date = extractData(s, R"(\d{2}\.\d{2}\.\d{4})");
-    if (date.size() != 1) {
-        throw runtime_error("File date not found or invalid in the input line.");
-    }
-    return date.at(0);
+string getFileName(const string& s) {
+    auto names = extractData(s, R"("[a-zA-Z0-9._-]+")");
+    if (names.empty()) throw runtime_error("File name not found");
+    return names[0];
 }
 
-int getFileSum(string s) {
-    auto sum = extractData(s, R"(\b\d+\b)");
-    if (sum.size() < 1) {
-        throw runtime_error("File sum not found in the input line.");
-    }
-    return stoi(sum.back());
+string getFileDate(const string& s) {
+    auto dates = extractData(s, R"(\d{2}\.\d{2}\.\d{4})");
+    if (dates.size() != 1) throw runtime_error("Invalid or missing date");
+    return dates[0];
+}
+
+int getFileSum(const string& s) {
+    auto sums = extractData(s, R"(\b\d+\b)");
+    if (sums.empty()) throw runtime_error("Sum not found");
+    return stoi(sums.back());
 }
 
 vector<string> extractData(const string& data, const string& regex) {
-    std::regex words_regex(regex);
-    auto words_begin = sregex_iterator(data.begin(), data.end(), words_regex);
-    auto words_end = sregex_iterator();
-    vector<string> out;
-    for (sregex_iterator i = words_begin; i != words_end; ++i) {
-        out.push_back(i->str());
+    std::regex pattern(regex);
+    sregex_iterator begin(data.begin(), data.end(), pattern), end;
+    vector<string> result;
+    for (auto it = begin; it != end; ++it) {
+        result.push_back(it->str());
     }
-    return out;
+    return result;
 }
 
 std::ostream& operator<<(std::ostream& stream, const FileInfo& fileInfo) {
